@@ -1,4 +1,15 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#12060a"><title>ยืม-คืน</title><link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head><body><main>
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#12060a"><title>ยืม-คืน</title><link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"><style>
+.it{cursor:pointer}
+.dm{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.dm.o{display:flex}
+.dp{position:relative;width:min(560px,100%);max-height:90vh;overflow:auto;display:grid;grid-template-columns:200px 1fr;gap:20px;padding:22px;border-radius:22px;background:rgba(28,11,18,.97);border:1px solid rgba(255,255,255,.12);color:#f6eeee;font-family:Prompt,sans-serif;box-shadow:0 40px 80px -24px #000}
+.dc{aspect-ratio:3/4;border-radius:14px;background:var(--c);background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:12px;font-weight:600}
+.dp h2{margin:0 0 10px;font-size:1.25rem}
+.dp dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 16px;font-size:.92rem}
+.dp dt{color:#b9a9ab}.dp dd{margin:0}
+.dx{position:absolute;top:8px;right:14px;background:none;border:0;color:inherit;font-size:1.6rem;cursor:pointer;line-height:1}
+@media(max-width:520px){.dp{grid-template-columns:1fr}.dc{max-width:200px;margin:0 auto}}
+</style></head><body><main>
 <section class="hero two"><div><small>ยินดีต้อนรับ</small><h1 id="hi"></h1><div class="pills" id="st"></div><div class="due"><input type="date" id="due" aria-label="วันที่ต้องการคืน"><span id="dueTh"></span></div></div>
 <div class="b3w"><div class="b3"><i class="f">ห้องสมุด<br>วท.พัทลุง</i><i class="k"></i><i class="s"></i><i class="p"></i></div></div></section>
 <div class="bar2"><input id="q" type="search" placeholder="ค้นหาชื่อรายการ"><div id="chips" class="tabs" style="margin:0"></div></div>
@@ -18,7 +29,18 @@ $('#chips').innerHTML=cats.map(c=>`<button class="chip ${c==cat?'on':''}" data-c
 document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{cat=b.dataset.c;draw()});
 const L=items.filter(i=>(cat=='ทั้งหมด'||i.type==cat)&&(i.title+' '+(i.pub||'')).toLowerCase().includes(q));
 $('#g').innerHTML=L.map((i,k)=>{const l=left(i),p=Math.max(0,Math.round(l/i.qty*100)),bg=typeof i.img=='string'&&i.img.startsWith('data:image/')?`;background-image:linear-gradient(to top,rgba(0,0,0,.8),rgba(0,0,0,.1)),url('${i.img}');background-size:cover;background-position:center`:'',info=[i.pub,i.year&&'พ.ศ. '+i.year].filter(Boolean).map(esc).join(' · ');
-return `<article class="card it" data-tilt style="--d:${k*60}ms"><div class="cv" style="--c:${pal[hs(i.title)]}${bg}"><b>${esc(i.title)}</b><small>${esc(i.type||'ทั่วไป')}</small></div><div class="bar"><i style="width:${p}%"></i></div>${info?`<div class="meta">${info}</div>`:''}<div class="meta">เหลือ ${l} จาก ${i.qty}</div><button class="btn full" ${l<1?'disabled':''} onclick="req('${i.id}',this)">${ic('plus')}${l<1?'หมดชั่วคราว':'ขอยืม'}</button></article>`}).join('')||'<p class="mut">ไม่พบรายการ</p>'}
+return `<article class="card it" data-tilt style="--d:${k*60}ms" onclick="det('${i.id}')"><div class="cv" style="--c:${pal[hs(i.title)]}${bg}"><b>${esc(i.title)}</b><small>${esc(i.type||'ทั่วไป')}</small></div><div class="bar"><i style="width:${p}%"></i></div>${info?`<div class="meta">${info}</div>`:''}<div class="meta">เหลือ ${l} จาก ${i.qty}</div><button class="btn full" ${l<1?'disabled':''} data-bid="${i.id}" onclick="event.stopPropagation();req('${i.id}',this)">${ic('plus')}${l<1?'หมดชั่วคราว':'ขอยืม'}</button></article>`}).join('')||'<p class="mut">ไม่พบรายการ</p>'}
+const okImg=v=>typeof v=='string'&&v.startsWith('data:image/');
+const dm=document.createElement('div');dm.className='dm';document.body.append(dm);
+const closeD=()=>dm.classList.remove('o');
+dm.onclick=e=>{if(e.target==dm)closeD()};addEventListener('keydown',e=>e.key=='Escape'&&closeD());
+function det(id){const i=items.find(x=>x.id==id);if(!i)return;
+const l=left(i),have=loans.some(x=>x.uid==m.id&&x.itemId==i.id&&['pending','borrowed'].includes(x.status)),
+cv=okImg(i.img)?`background-image:url('${i.img}')`:`--c:${pal[hs(i.title)]}`,
+R=[['ประเภท',i.type||'ทั่วไป'],['สำนักพิมพ์',i.pub],['ปีที่พิมพ์',i.year&&'พ.ศ. '+i.year],['คงเหลือ',`${l} จาก ${i.qty} เล่ม`]].filter(r=>r[1]);
+dm.innerHTML=`<div class="dp" role="dialog" aria-modal="true" aria-label="${esc(i.title)}"><button class="dx" aria-label="ปิด" onclick="closeD()">×</button><div class="dc" style="${cv}">${okImg(i.img)?'':esc(i.title)}</div><div><h2>${esc(i.title)}</h2><dl>${R.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${have?'<p class="mut">คุณมีคำขอหรือกำลังยืมรายการนี้อยู่แล้ว</p>':''}<div class="mut" style="margin-bottom:10px">คืนวันที่ ${th($('#due').value)}</div><button class="btn full" ${l<1?'disabled':''} onclick="reqD('${i.id}')">${ic('plus')}${l<1?'หมดชั่วคราว':'ขอยืม'}</button></div></div>`;
+dm.classList.add('o')}
+function reqD(id){const b=document.querySelector(`#g [data-bid="${id}"]`);closeD();if(b)req(id,b)}
 $('#q').oninput=e=>{q=e.target.value.trim().toLowerCase();draw()};
 async function init(){[items,loans]=(await Promise.all([load('books',[]),load('loans',[])])).map(x=>x.d);draw()}
 async function req(id,b){const i=items.find(x=>x.id==id);b.disabled=true;
