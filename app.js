@@ -1,8 +1,8 @@
 const CFG = {
   api: 'https://ptlapi.arthurzy-1234.workers.dev',
-  owner: location.hostname.endsWith('.github.io') ? location.hostname.split('.')[0] : 'YOUR_GITHUB_USER',
-  repo: location.hostname.endsWith('.github.io') ? (location.pathname.split('/')[1] || location.hostname) : 'YOUR_REPO',
   branch: 'main',
+  maxDays: 14,  // เลือกวันคืนได้ไม่เกินกี่วัน
+  maxLoans: 3,  // ยืม/จองพร้อมกันได้สูงสุดกี่เล่ม
   // TODO: ย้ายการตรวจรหัสแอดมินไปที่ Worker แล้วลบสองบรรทัดนี้ (ต้องแก้ login.html ด้วย)
   adminUser: 'admin',
   adminHash: 'bc78e58d55cde1346e68f8e5fe588dedf62fa457aa646a500a53347faff6ee24',
@@ -33,10 +33,17 @@ const th = d => {
   return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + (d.getFullYear() + 543);
 };
 
-// วันที่ตามเวลาเครื่อง (เดิมใช้ UTC ทำให้ช่วงเช้าตรู่ได้วันเมื่อวาน)
-const today = () => {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+// วันที่ตามเวลาเครื่อง (ไม่ใช้ UTC)
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const addDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return d; };
+const today = () => ymd(new Date());
+
+// ตรวจวันเกิดแบบ dd/mm/yyyy (พ.ศ.) ว่าเป็นวันที่มีจริงและไม่ใช่อนาคต
+const validDob = s => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s || '');
+  if (!m) return false;
+  const d = +m[1], mo = +m[2], y = +m[3] - 543, t = new Date(y, mo - 1, d);
+  return t.getFullYear() === y && t.getMonth() === mo - 1 && t.getDate() === d && y >= 1950 && t <= new Date();
 };
 
 const sha = async s =>
@@ -47,13 +54,20 @@ const me = () => {
   try { return JSON.parse(sessionStorage.me || 'null'); } catch { return null; }
 };
 
+const homeOf = r => r === 'admin' ? 'Admin.html' : 'borrow.html';
+
 function guard(role) {
   const m = me();
-  if (!m || m.role !== role) {
-    location.href = 'login.html';
-    throw new Error('ต้องเข้าสู่ระบบก่อน');
-  }
+  if (!m) { location.replace('login.html'); throw new Error('ต้องเข้าสู่ระบบก่อน'); }
+  if (m.role !== role) { location.replace(homeOf(m.role)); throw new Error('ไม่มีสิทธิ์เข้าหน้านี้'); }
   return m;
+}
+
+// ใช้ในหน้า login: ถ้าล็อกอินอยู่แล้วให้ไปหน้าของตัวเอง
+function redirectIfIn() {
+  const m = me();
+  if (m) { location.replace(homeOf(m.role)); return true; }
+  return false;
 }
 
 function logout() {
@@ -64,8 +78,8 @@ function logout() {
 function nav(on) {
   const a = me().role === 'admin';
   const L = a
-    ? [['index.html', 'home', 'หน้าแรก'], ['Admin.html', 'shield', 'จัดการระบบ']]
-    : [['index.html', 'home', 'หน้าแรก'], ['borrow.html', 'book', 'ยืม-คืน'], ['History.html', 'clock', 'ประวัติ'], ['Register.html', 'user', 'โปรไฟล์']];
+    ? [['Admin.html', 'shield', 'จัดการระบบ']]
+    : [['borrow.html', 'book', 'ยืม-คืน'], ['History.html', 'clock', 'ประวัติ'], ['Register.html', 'user', 'โปรไฟล์']];
   document.body.insertAdjacentHTML('afterbegin',
     `<header class="top"><b>${ic('book')} ระบบยืมคืน</b>${L.map(([h, i, t]) =>
       `<a class="${h == on ? 'on' : ''}" href="${h}">${ic(i)}${t}</a>`).join('')}<button onclick="logout()">${ic('out')}ออก</button></header>`);
@@ -143,7 +157,7 @@ const FORM = (u = {}) => `<label>ชื่อ</label><input id="first" required 
 <label>แผนกวิชา</label><input id="dept" required value="${esc(u.dept)}">
 <label>สาขาวิชา</label><input id="major" required value="${esc(u.major)}">
 <label>วันเดือนปีเกิด (เช่น 12/08/2551)</label><input id="dob" required pattern="\\d{2}/\\d{2}/\\d{4}" placeholder="12/08/2551" value="${esc(u.dob)}">
-<label>อีเมล (สำหรับรับแจ้งเตือน)</label><input id="email" type="email" required value="${esc(u.email)}">`;
+<label>อีเมล${CFG.mail.key?' (สำหรับรับแจ้งเตือน)':''}</label><input id="email" type="email" required value="${esc(u.email)}">`;
 
 const GET = () => Object.fromEntries(
   ['first', 'last', 'level', 'group', 'dept', 'major', 'dob', 'email'].map(k => [k, $('#' + k).value.trim()])

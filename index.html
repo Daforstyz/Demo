@@ -56,11 +56,11 @@ footer{padding:28px 6vw;color:var(--mut);font-size:.85rem;text-align:center;back
 </style></head><body>
 <nav class="nv"><b>ห้องสมุด วิทยาลัยเทคนิคพัทลุง</b><a href="login.html">เข้าสู่ระบบ</a></nav>
 <header class="hero" id="hero"><div class="pin"><div class="stage"><div class="world" id="world"></div></div>
-<div class="copy"><p class="eye" style="margin:0 0 16px">ยืมหนังสือออนไลน์</p><h1>ความรู้ทั้งห้องสมุด<br><em>อยู่ในมือคุณ</em></h1><p>ขอยืมจากมือถือ รับอีเมลเมื่ออนุมัติ แล้วมารับเล่มจริงที่ห้องสมุด</p><div><a class="btn" href="login.html">เริ่มยืมเลย</a></div></div></div></header>
+<div class="copy"><p class="eye" style="margin:0 0 16px">ยืมหนังสือออนไลน์</p><h1>ความรู้ทั้งห้องสมุด<br><em>อยู่ในมือคุณ</em></h1><p>ขอยืมจากมือถือ ติดตามสถานะในระบบ แล้วมารับเล่มจริงที่ห้องสมุด</p><div><a class="btn" href="login.html">เริ่มยืมเลย</a></div></div></div></header>
 <section class="flow" id="flow"><div class="pin" id="pin" data-i="0"><div><div class="tabs2"><span>ขอยืม</span><span>อนุมัติ</span><span>คืน</span></div>
 <div class="steps"><article><h2>เลือกเล่มที่ใช่<br>แล้วกดขอยืม</h2><p>ค้นหาชื่อหรือกรองตามหมวด ระบบบอกทันทีว่าเหลือกี่เล่ม</p></article>
-<article><h2>แอดมินอนุมัติ<br>อีเมลถึงคุณ</h2><p>เลขที่การยืม วันยืม และวันคืน ส่งเข้าอีเมลของคุณทันที</p></article>
-<article><h2>รับเล่มจริง<br>คืนตามกำหนด</h2><p>คืนที่ห้องสมุด แอดมินกดรับคืน คุณได้อีเมลยืนยันอีกครั้ง</p></article></div>
+<article><h2>แอดมินอนุมัติ<br>ติดตามได้ทันที</h2><p>เลขที่การยืม วันยืม และวันคืน ดูได้ในหน้าประวัติของคุณ</p></article>
+<article><h2>รับเล่มจริง<br>คืนตามกำหนด</h2><p>คืนที่ห้องสมุด แอดมินกดรับคืน สถานะในระบบอัปเดตทันที</p></article></div>
 <div class="rail"><i></i></div></div>
 <div class="vis"><svg viewBox="0 0 240 240"><circle cx="120" cy="120" r="100" stroke="#3a1a22" stroke-width="3"/><circle class="ring" cx="120" cy="120" r="100"/></svg>
 <svg class="ico" viewBox="0 0 24 24" style="padding:30%"><path d="M4 4h12a4 4 0 014 4v13H8a4 4 0 01-4-4zM4 17a4 4 0 014-4h12"/></svg>
@@ -90,4 +90,4 @@ function pick(i){sel=i;cat.textContent='หมวด'+cats[i];lit(i)}
 rack.addEventListener('pointermove',e=>{const r=rack.getBoundingClientRect();lit((e.clientX-r.left)/r.width*cats.length-.5)});
 rack.addEventListener('pointerleave',()=>lit(sel));pick(0);
 const cta=D.getElementById('cta');if(!R)D.querySelector('.end').addEventListener('pointermove',e=>{const r=cta.getBoundingClientRect();cta.style.setProperty('--tx',((e.clientX-r.left-r.width/2)*.12).toFixed(1)+'px');cta.style.setProperty('--ty',((e.clientY-r.top-r.height/2)*.18).toFixed(1)+'px')});
-</script><script src="extras.js"></script></body></html>
+</script><script>try{const m=JSON.parse(sessionStorage.me||'null');if(m)document.querySelectorAll('a[href="login.html"]').forEach(a=>{a.href=m.role=='admin'?'Admin.html':'borrow.html';if(a.closest('.nv'))a.textContent='ไปที่ระบบ'})}catch(e){}</script><script src="extras.js"></script></body></html>

@@ -14,7 +14,7 @@
 <div class="tabs noprint"><button class="btn" data-t="req" onclick="show('req')">คำขอ</button><button class="btn g" data-t="items" onclick="show('items')">จัดการรายการ</button><button class="btn g" data-t="users" onclick="show('users')">ผู้ใช้</button><button class="btn g" data-t="rep" onclick="show('rep')">รายงาน PDF</button></div><div id="v"></div></main>
 <script src="app.js"></script><script>
 guard('admin');nav('Admin.html');let loans=[],books=[],users={};
-const ST={pending:'รออนุมัติ',borrowed:'กำลังยืม',returned:'คืนแล้ว',rejected:'ไม่อนุมัติ'};
+const ST={pending:'รออนุมัติ',borrowed:'กำลังยืม',returned:'คืนแล้ว',rejected:'ไม่อนุมัติ',cancelled:'ยกเลิกแล้ว'};
 async function ref(){[loans,books,users]=(await Promise.all([load('loans',[]),load('books',[]),load('users',{})])).map(x=>x.d)}
 async function show(t){try{await ref();document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('g',b.dataset.t!=t));window[t+'V']()}catch(e){$('#v').textContent=e.message}}
 let rf='pending',rq='',busy=false;
@@ -23,7 +23,7 @@ const late=l=>l.status=='borrowed'&&l.due&&l.due<today();
 const lateDays=l=>Math.max(1,Math.round((new Date(today())-new Date(l.due))/864e5));
 const actN=id=>loans.filter(l=>l.itemId==id&&isAct(l.status)).length;
 function reqV(){const c=s=>loans.filter(l=>l.status==s).length,od=loans.filter(late).length;
-$('#v').innerHTML=`<div class="sm noprint"><span class="${c('pending')?'w':''}">รออนุมัติ<b>${c('pending')}</b></span><span>กำลังยืม<b>${c('borrowed')}</b></span><span class="${od?'w':''}">เกินกำหนด<b>${od}</b></span></div><div class="fl noprint"><select id="rf"><option value="all">ทุกสถานะ</option><option value="pending">รออนุมัติ</option><option value="borrowed">กำลังยืม</option><option value="late">เกินกำหนดคืน</option><option value="returned">คืนแล้ว</option><option value="rejected">ไม่อนุมัติ</option></select><input id="rs" type="search" placeholder="ค้นหาชื่อผู้ยืม / รายการ / เลขที่"></div><div class="wrap" id="rt"></div>`;
+$('#v').innerHTML=`<div class="sm noprint"><span class="${c('pending')?'w':''}">รออนุมัติ<b>${c('pending')}</b></span><span>กำลังยืม<b>${c('borrowed')}</b></span><span class="${od?'w':''}">เกินกำหนด<b>${od}</b></span></div><div class="fl noprint"><select id="rf"><option value="all">ทุกสถานะ</option><option value="pending">รออนุมัติ</option><option value="borrowed">กำลังยืม</option><option value="late">เกินกำหนดคืน</option><option value="returned">คืนแล้ว</option><option value="rejected">ไม่อนุมัติ</option><option value="cancelled">ยกเลิกแล้ว</option></select><input id="rs" type="search" placeholder="ค้นหาชื่อผู้ยืม / รายการ / เลขที่"></div><div class="wrap" id="rt"></div>`;
 $('#rf').value=rf;$('#rs').value=rq;
 $('#rf').onchange=e=>{rf=e.target.value;reqT()};$('#rs').oninput=e=>{rq=e.target.value.trim().toLowerCase();reqT()};reqT()}
 function reqT(){const L=loans.slice().reverse().filter(l=>(rf=='all'||(rf=='late'?late(l):l.status==rf))&&(!rq||[l.name,l.item,l.no,l.group].join(' ').toLowerCase().includes(rq)));
@@ -31,6 +31,7 @@ $('#rt').innerHTML=`<table><tr><th>เลขที่</th><th>ผู้ยืม
 async function setL(no,st){if(busy)return;busy=true;let x;
 try{const bk=st=='borrowed'?(await load('books',[])).d:[];
 await upd('loans',[],d=>{x=d.find(y=>y.no==no);if(!x)throw Error('ไม่พบรายการยืมนี้');
+if(((st=='borrowed'||st=='rejected')&&x.status!='pending')||(st=='returned'&&x.status!='borrowed'))throw Error('สถานะรายการเปลี่ยนไปแล้ว (อาจถูกยกเลิก) กรุณาโหลดหน้าใหม่');
 if(st=='borrowed'){const bo=bk.find(z=>z.id==x.itemId);if(!bo)throw Error('ไม่พบหนังสือเล่มนี้ในระบบแล้ว (อาจถูกลบ) กรุณาปฏิเสธคำขอ');
 if(d.filter(y=>y.itemId==x.itemId&&y.status=='borrowed'&&y.no!=no).length>=bo.qty)throw Error('ไม่มีเล่มว่างพอ อนุมัติไม่ได้ (ยืมครบจำนวนแล้ว)')}
 x.status=st;if(st=='returned'){x.retDate=today();x.retNo='R'+no.slice(1)}});

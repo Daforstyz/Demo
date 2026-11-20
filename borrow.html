@@ -16,8 +16,8 @@
 <div class="grid" id="g"><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div></div></main>
 <script src="app.js"></script><script>
 const m=guard('user');nav('borrow.html');$('#hi').textContent=m.name;
-const d=new Date();d.setDate(d.getDate()+7);$('#due').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');$('#due').min=today();
-const showDue=()=>$('#dueTh').textContent='คืนวันที่ '+th($('#due').value);$('#due').onchange=showDue;showDue();
+$('#due').value=ymd(addDays(Math.min(7,CFG.maxDays)));$('#due').min=today();$('#due').max=ymd(addDays(CFG.maxDays));
+const showDue=()=>$('#dueTh').textContent='คืนวันที่ '+th($('#due').value)+' (ยืมได้ไม่เกิน '+CFG.maxDays+' วัน · สูงสุด '+CFG.maxLoans+' เล่มพร้อมกัน)';$('#due').onchange=showDue;showDue();
 let items=[],loans=[],cat='ทั้งหมด',q='';const pal=['#7a1626','#b3122d','#5a0f1b','#9b1c31','#44121c'],hs=s=>[...s].reduce((a,c)=>a+c.charCodeAt(0),0)%5;
 const left=i=>i.qty-loans.filter(l=>l.itemId==i.id&&['pending','borrowed'].includes(l.status)).length;
 const toast=t=>{const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),2800)};
@@ -43,8 +43,17 @@ dm.classList.add('o')}
 function reqD(id){const b=document.querySelector(`#g [data-bid="${id}"]`);closeD();if(b)req(id,b)}
 $('#q').oninput=e=>{q=e.target.value.trim().toLowerCase();draw()};
 async function init(){[items,loans]=(await Promise.all([load('books',[]),load('loans',[])])).map(x=>x.d);draw()}
-async function req(id,b){const i=items.find(x=>x.id==id);b.disabled=true;
-try{const u=(await load('users',{})).d[m.id];await upd('loans',[],d=>{d.push({no:'L'+String(d.length+1).padStart(4,'0'),uid:m.id,name:u.first+' '+u.last,level:u.level,group:u.group,dept:u.dept,major:u.major,item:i.title,itemId:i.id,borrowDate:today(),due:$('#due').value,status:'pending'})});
-flyBook(b,document.querySelector('.top a[href="History.html"]'));toast('ส่งคำขอแล้ว รอแอดมินอนุมัติ');await init()}catch(e){toast(e.message);b.disabled=false}}
+async function req(id,b){const i=items.find(x=>x.id==id);if(!i)return;b.disabled=true;
+try{const due=$('#due').value;if(!due||due<today()||due>ymd(addDays(CFG.maxDays)))throw Error('เลือกวันคืนไม่เกิน '+CFG.maxDays+' วันนับจากวันนี้');
+const [u,bk]=await Promise.all([load('users',{}).then(r=>r.d[m.id]),load('books',[]).then(r=>r.d.find(x=>x.id==id))]);
+if(!u){sessionStorage.clear();alert('ไม่พบบัญชีของคุณในระบบ (อาจถูกลบ) กรุณาสมัครใหม่');location.href='login.html';return}
+if(!bk)throw Error('ไม่พบหนังสือเล่มนี้แล้ว');
+await upd('loans',[],d=>{const act=d.filter(l=>['pending','borrowed'].includes(l.status));
+if(act.some(l=>l.uid==m.id&&l.itemId==id))throw Error('คุณมีคำขอหรือกำลังยืมเล่มนี้อยู่แล้ว');
+if(act.filter(l=>l.uid==m.id).length>=CFG.maxLoans)throw Error('ยืมพร้อมกันได้สูงสุด '+CFG.maxLoans+' เล่ม');
+if(act.filter(l=>l.itemId==id).length>=bk.qty)throw Error('เล่มนี้ถูกยืมหรือจองครบแล้ว');
+const n=Math.max(0,...d.map(l=>+String(l.no).slice(1)||0))+1;
+d.push({no:'L'+String(n).padStart(4,'0'),uid:m.id,name:u.first+' '+u.last,level:u.level,group:u.group,dept:u.dept,major:u.major,item:bk.title,itemId:bk.id,borrowDate:today(),due,status:'pending'})});
+flyBook(b,document.querySelector('.top a[href="History.html"]'));toast('ส่งคำขอแล้ว รอแอดมินอนุมัติ');await init()}catch(e){toast(e.message);b.disabled=false;init().catch(()=>{})}}
 init().catch(e=>$('#g').textContent=e.message);
 </script></body></html>

@@ -4,9 +4,10 @@
 <script src="app.js"></script><script>
 const m=guard('user');nav('Register.html');$('#c_i').textContent=m.id.replace(/(\d{4})(\d{4})(\d{3})/,'$1 $2 $3');
 function sync(){const g=GET();$('#c_n').textContent=(g.first+' '+g.last).trim()||'ชื่อ นามสกุล';$('#c_l').textContent=g.level+(g.group?' · '+g.group:'');$('#c_d').textContent=g.dept||'แผนกวิชา';$('#c_m').textContent=g.major||'สาขาวิชา';$('#c_a').textContent=(g.first||'?')[0];$('#c_e').textContent=g.email||''}
-load('users',{}).then(({d})=>{$('#f').innerHTML=`<label>รหัสนักศึกษา</label><input value="${m.id}" disabled>${FORM(d[m.id])}<br><br><button class="btn">${ic('check')}บันทึก</button>`;sync()}).catch(e=>$('#f').textContent=e.message);
+let cur=null;load('users',{}).then(({d})=>{cur=d[m.id];if(!cur){alert('ไม่พบบัญชีของคุณในระบบ (อาจถูกลบ) กรุณาสมัครใหม่');logout();return}$('#f').innerHTML=`<label>รหัสนักศึกษา</label><input value="${m.id}" disabled>${FORM(d[m.id])}<br><br><button class="btn">${ic('check')}บันทึก</button>`;sync()}).catch(e=>$('#f').textContent=e.message);
 $('#f').addEventListener('input',()=>$('#first')&&sync());
-$('#f').onsubmit=async e=>{e.preventDefault();const g=GET(),pw=await sha(m.id+':'+g.dob);
-try{await upd('users',{},u=>{u[m.id]={...u[m.id],...g,pw}});sessionStorage.me=JSON.stringify({...m,name:g.first+' '+g.last});const c=$('#idc');c.classList.remove('stamp');void c.offsetWidth;c.classList.add('stamp');
+$('#f').onsubmit=async e=>{e.preventDefault();if(!cur)return;const g=GET();if(!validDob(g.dob)){alert('วันเกิดไม่ถูกต้อง กรอกแบบ 12/08/2551 (พ.ศ.)');return}
+if(g.dob!==cur.dob&&!confirm('การเปลี่ยนวันเกิดจะเปลี่ยนรหัสผ่านเข้าสู่ระบบด้วย ยืนยันหรือไม่?'))return;const pw=await sha(m.id+':'+g.dob);
+try{await upd('users',{},u=>{if(!u[m.id])throw Error('ไม่พบบัญชีของคุณในระบบ (อาจถูกลบ)');u[m.id]={...u[m.id],...g,pw}});cur={...cur,...g};sessionStorage.me=JSON.stringify({...m,name:g.first+' '+g.last});const c=$('#idc');c.classList.remove('stamp');void c.offsetWidth;c.classList.add('stamp');
 const t=document.createElement('div');t.className='toast';t.textContent='บันทึกแล้ว';document.body.append(t);setTimeout(()=>t.remove(),2500)}catch(x){alert(x.message)}};
 </script></body></html>
