@@ -1,4 +1,11 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>จัดการระบบ</title><link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head><body><main>
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>จัดการระบบ</title><link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"><style>
+.af{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;align-items:start}
+.afb{display:flex;gap:8px;align-items:center;align-self:end}
+.bi{width:44px;height:60px;object-fit:cover;border-radius:6px;display:block;background:rgba(255,255,255,.08)}
+#pv{display:flex;gap:10px;align-items:center;margin-top:8px}
+#pv .bi{width:56px;height:76px}
+.rmi{display:flex;gap:6px;align-items:center;font-size:.85rem;margin:0}
+</style></head><body><main>
 <div class="tabs noprint"><button class="btn" onclick="show('req')">คำขอ</button><button class="btn g" onclick="show('items')">จัดการรายการ</button><button class="btn g" onclick="show('users')">ผู้ใช้</button><button class="btn g" onclick="show('rep')">รายงาน PDF</button></div><div id="v"></div></main>
 <script src="app.js"></script><script>
 guard('admin');nav('Admin.html');let loans=[],books=[],users={};
@@ -11,9 +18,32 @@ const e=(users[x.uid]||{}).email,b={'เลขที่การยืม':x.no,
 if(st=='borrowed')mail(e,'อนุมัติการยืม',{...b,'รายละเอียดที่ยืม':x.item,'วันที่ยืม':th(x.borrowDate),'วันที่คืน':th(x.due)});
 if(st=='returned')mail(e,'การคืนสำเร็จ',{'เรื่อง':'การคืน','เลขที่การคืน':x.retNo,'เลขอ้างอิงการยืม':x.no,...b,'วันที่ยืม':th(x.borrowDate),'วันที่ต้องคืน':th(x.due),'วันที่คืนสำเร็จ':th(x.retDate)});
 show('req')}catch(e){alert(e.message)}}
-function itemsV(){$('#v').innerHTML=`<form class="row card" id="af"><div><label>ชื่อ</label><input id="n" required></div><div><label>ประเภท</label><input id="ty"></div><div><label>จำนวน</label><input id="q" type="number" min="1" value="1"></div><button class="btn">${ic('plus')}เพิ่ม</button></form><br><div class="wrap"><table><tr><th>ชื่อ</th><th>ประเภท</th><th>จำนวน</th><th></th></tr>${books.map(b=>`<tr><td>${esc(b.title)}</td><td>${esc(b.type)}</td><td>${b.qty}</td><td><button class="btn g" onclick="edB('${b.id}')">${ic('edit')}แก้ไข</button> <button class="btn g" onclick="rmB('${b.id}')">${ic('trash')}ลบ</button></td></tr>`).join('')}</table></div>`;
-$('#af').onsubmit=async e=>{e.preventDefault();await upd('books',[],d=>{d.push({id:'B'+Date.now(),title:$('#n').value,type:$('#ty').value,qty:+$('#q').value})});show('items')}}
-async function edB(id){const b=books.find(x=>x.id==id),t=prompt('ชื่อ',b.title);if(t===null)return;const q=prompt('จำนวน',b.qty);await upd('books',[],d=>{const x=d.find(y=>y.id==id);x.title=t;x.qty=+q||x.qty});show('items')}
+let editId=null,newImg=null,delImg=false;
+const okImg=v=>typeof v=='string'&&v.startsWith('data:image/');
+const yearMax=()=>new Date().getFullYear()+544;
+const yearOk=v=>!v||(/^\d{4}$/.test(v)&&+v>=2400&&+v<=yearMax());
+// ย่อรูปให้ไม่เกิน 300x400 แล้วบีบเป็น JPEG เพื่อให้ไฟล์ข้อมูลไม่บวม
+const toImg=f=>new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();
+im.onload=()=>{const k=Math.min(1,300/im.width,400/im.height),w=Math.max(1,Math.round(im.width*k)),h=Math.max(1,Math.round(im.height*k)),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.75))};
+im.onerror=()=>{URL.revokeObjectURL(u);no(Error('ไฟล์รูปไม่ถูกต้อง'))};im.src=u});
+function pv(){const b=editId&&books.find(x=>x.id==editId),old=b&&okImg(b.img)?b.img:null,cur=newImg||(delImg?null:old);
+$('#pv').innerHTML=(cur?`<img class="bi" src="${cur}" alt="">`:'')+(old&&!newImg?`<label class="rmi"><input type="checkbox" id="rmi" ${delImg?'checked':''}> ลบรูปเดิม</label>`:'');
+const c=$('#rmi');if(c)c.onchange=()=>{delImg=c.checked;pv()}}
+function itemsV(){editId=null;newImg=null;delImg=false;
+$('#v').innerHTML=`<form class="card af" id="af"><div><label>ชื่อ</label><input id="n" required></div><div><label>ประเภท</label><input id="ty"></div><div><label>สำนักพิมพ์</label><input id="pub"></div><div><label>ปีที่พิมพ์ (พ.ศ.)</label><input id="yr" type="number" min="2400" max="${yearMax()}" placeholder="เช่น 2566"></div><div><label>จำนวน</label><input id="q" type="number" min="1" value="1"></div><div><label>รูปปก</label><input id="img" type="file" accept="image/*"><div id="pv"></div></div><div class="afb"><button class="btn" id="sb">${ic('plus')}เพิ่ม</button><button type="button" class="btn g" id="cb" style="display:none">ยกเลิก</button></div></form><br><div class="wrap"><table><tr><th>รูป</th><th>ชื่อ</th><th>ประเภท</th><th>สำนักพิมพ์</th><th>ปีที่พิมพ์</th><th>จำนวน</th><th></th></tr>${books.map(b=>`<tr><td>${okImg(b.img)?`<img class="bi" src="${b.img}" alt="">`:'<div class="bi"></div>'}</td><td>${esc(b.title)}</td><td>${esc(b.type)}</td><td>${esc(b.pub)}</td><td>${esc(b.year)}</td><td>${b.qty}</td><td><button class="btn g" onclick="edB('${b.id}')">${ic('edit')}แก้ไข</button> <button class="btn g" onclick="rmB('${b.id}')">${ic('trash')}ลบ</button></td></tr>`).join('')||'<tr><td colspan=7>ยังไม่มีรายการ</td></tr>'}</table></div>`;
+$('#img').onchange=async e=>{newImg=null;const f=e.target.files[0];
+if(f){try{if(!f.type.startsWith('image/'))throw Error('กรุณาเลือกไฟล์รูปภาพ');if(f.size>10e6)throw Error('ไฟล์ใหญ่เกิน 10 MB');newImg=await toImg(f);delImg=false}catch(er){alert(er.message);e.target.value=''}}
+pv()};
+$('#cb').onclick=()=>itemsV();
+$('#af').onsubmit=async e=>{e.preventDefault();const y=$('#yr').value.trim();
+if(!yearOk(y)){alert('ปีที่พิมพ์ต้องเป็น พ.ศ. 4 หลัก เช่น 2566');return}
+const sb=$('#sb');sb.disabled=true;
+try{const f={title:$('#n').value.trim(),type:$('#ty').value.trim(),pub:$('#pub').value.trim(),year:y,qty:Math.max(1,+$('#q').value||1)};
+await upd('books',[],d=>{if(editId){const x=d.find(z=>z.id==editId);if(!x)throw Error('ไม่พบรายการนี้แล้ว');Object.assign(x,f);if(newImg)x.img=newImg;else if(delImg)delete x.img}else d.push({id:'B'+Date.now(),...f,...(newImg?{img:newImg}:{})})});
+show('items')}catch(er){alert(er.message);sb.disabled=false}}}
+function edB(id){const b=books.find(x=>x.id==id);if(!b)return;editId=id;newImg=null;delImg=false;
+$('#n').value=b.title||'';$('#ty').value=b.type||'';$('#pub').value=b.pub||'';$('#yr').value=b.year||'';$('#q').value=b.qty;$('#img').value='';
+$('#sb').innerHTML=ic('check')+'บันทึก';$('#cb').style.display='';pv();scrollTo({top:0,behavior:'smooth'});$('#n').focus()}
 async function rmB(id){if(confirm('ลบรายการนี้?')){await upd('books',[],d=>d.filter(y=>y.id!=id));show('items')}}
 function usersV(){const U=Object.entries(users);$('#v').innerHTML=`<div class="wrap"><table><tr><th>รหัสนักศึกษา</th><th>ชื่อ</th><th>ระดับ</th><th>แผนก</th><th>อีเมล</th><th></th></tr>${U.map(([k,u])=>`<tr><td>${k}</td><td>${esc(u.first+' '+u.last)}</td><td>${u.level}</td><td>${esc(u.dept)}</td><td>${esc(u.email)}</td><td><button class="btn g" onclick="rmU('${k}')">${ic('trash')}ลบ</button></td></tr>`).join('')||'<tr><td colspan=6>ยังไม่มีผู้ใช้</td></tr>'}</table></div>`}
 async function rmU(k){if(confirm('ลบผู้ใช้นี้? ประวัติการยืมจะยังอยู่')){await upd('users',{},u=>{delete u[k]});show('users')}}
