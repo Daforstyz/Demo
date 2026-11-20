@@ -1,4 +1,5 @@
-(()=>{const D=document,R=matchMedia('(prefers-reduced-motion:reduce)').matches,home=!!D.getElementById('world');
+const boot=f=>document.readyState=='loading'?document.addEventListener('DOMContentLoaded',f):f();
+boot(()=>{const D=document,R=matchMedia('(prefers-reduced-motion:reduce)').matches,home=!!D.getElementById('world');
 const css=`.fb{position:fixed;bottom:-70px;z-index:0;pointer-events:none;border-radius:2px 4px 4px 2px;opacity:.16;background:var(--c);box-shadow:inset 4px 0 0 rgba(255,255,255,.25),inset -2px 0 0 rgba(0,0,0,.3);animation:rise var(--t) linear infinite;animation-delay:var(--dl)}
 .fb::after{content:"";position:absolute;left:30%;right:14%;top:18%;height:3px;background:rgba(255,255,255,.4);box-shadow:0 7px 0 rgba(255,255,255,.25)}
 @keyframes rise{to{transform:translateY(-125vh) rotate(var(--r))}}main,.login{position:relative;z-index:1}
@@ -17,18 +18,19 @@ const css=`.fb{position:fixed;bottom:-70px;z-index:0;pointer-events:none;border-
 D.head.append(Object.assign(D.createElement('style'),{textContent:css}));
 if(!R&&!home){const pal=['#7a1626','#b3122d','#5a0f1b','#e9dcdd','#9b1c31'];for(let i=0;i<14;i++){const s=D.createElement('span'),w=22+Math.random()*26;s.className='fb';
 s.style.cssText=`left:${Math.random()*96}vw;width:${w}px;height:${w*1.3}px;--c:${pal[i%5]};--t:${22+Math.random()*24}s;--dl:-${Math.random()*40}s;--r:${(Math.random()*160-80)|0}deg`;D.body.append(s)}}
-const stripped=s=>s.replace(/ครับ|ค่ะ|คะ|นะ|หน่อย|ด้วย|ไหม|มั้ย|[?？!]/g,'').trim();
+const stripped=s=>s.replace(/(ครับ|ค่ะ|คะ|นะ|หน่อย|ด้วย|ไหม|มั้ย|[?？!]|\s)+$/,'').trim();
 const user=()=>typeof me=='function'?me():null,fmt=d=>typeof th=='function'?th(d):d;
 const ST={pending:'รออนุมัติ',borrowed:'กำลังยืม',returned:'คืนแล้ว',rejected:'ไม่อนุมัติ'};
 const N='ผมยังไม่มีข้อมูลเรื่องนี้ในระบบ สอบถามบรรณารักษ์ที่ห้องสมุดโดยตรงจะแม่นที่สุดครับ';
 const I=[
 [/สวัสดี|หวัดดี|hello|^hi$/i,async()=>'สวัสดีครับ ผมคือผู้ช่วยห้องสมุด ถามเรื่องการยืม การคืน การลงทะเบียน ค้นหาหนังสือ หรือสถานะของคุณได้เลย'],
 [/ขอบคุณ|thank/i,async()=>'ยินดีครับ มีอะไรถามได้อีกเสมอ'],
-[/สถานะ|ของฉัน|ประวัติ|ค้างคืน|ยืมอะไรอยู่|กำหนดคืน/,async()=>{const m=user();if(!m||m.role!='user')return'เข้าสู่ระบบก่อน ผมจะดูสถานะการยืมของคุณให้ได้ครับ';
+[/สถานะ|ของฉัน|ประวัติ|ค้างคืน|ยืมอะไรอยู่|กำหนดคืน/,async()=>{const m=user();if(!m)return'เข้าสู่ระบบก่อน ผมจะดูสถานะการยืมของคุณให้ได้ครับ';if(m.role!='user')return'บัญชีแอดมินไม่มีรายการยืมส่วนตัวครับ ดูรายการทั้งหมดได้ที่หน้าจัดการระบบ';
 const L=(await load('loans',[])).d.filter(l=>l.uid==m.id&&['pending','borrowed'].includes(l.status));
 return L.length?'รายการของคุณตอนนี้\n'+L.map(l=>`• ${l.item} (${ST[l.status]}) กำหนดคืน ${fmt(l.due)}`).join('\n'):'ตอนนี้คุณไม่มีรายการที่ค้างอยู่ครับ'}],
-[/ค้นหา|หา(หนังสือ|เล่ม)|มี.*(ไหม|มั้ย)|เหลือ|ว่าง/,async q=>{const m=user();if(!m||m.role!='user')return'เข้าสู่ระบบก่อน แล้วผมจะค้นหาหนังสือและบอกจำนวนที่เหลือให้ครับ';
-const w=stripped(q).replace(/ค้นหา|หนังสือ|เล่ม|มี|เหลือ|ว่าง|ช่วย|อยาก|ต้องการ|หา|เรื่อง|ของ|กี่/g,' ').split(/\s+/).filter(Boolean);
+[/ค่าปรับ|ที่ตั้ง|เบอร์|ระเบียบ|เวลาเปิด|เวลาทำการ|กี่วัน|ยืมได้กี่เล่ม/,async()=>N],
+[/ค้นหา|หา(หนังสือ|เล่ม)|มี.*(ไหม|มั้ย)|เหลือ|ว่าง/,async q=>{const m=user();if(!m)return'เข้าสู่ระบบก่อน แล้วผมจะค้นหาหนังสือและบอกจำนวนที่เหลือให้ครับ';
+const w=stripped(q).replace(/ค้นหา|หนังสือ|เล่ม|เหลือ|ว่าง|ช่วย|อยาก|ต้องการ|เรื่อง|กี่/g,' ').split(/\s+/).filter(t=>t.length>2);
 const [B,L]=(await Promise.all([load('books',[]),load('loans',[])])).map(x=>x.d);
 const hit=B.filter(b=>!w.length||w.some(t=>(b.title+' '+(b.type||'')).includes(t))).slice(0,6);
 return hit.length?'พบรายการ\n'+hit.map(b=>`• ${b.title} เหลือ ${b.qty-L.filter(l=>l.itemId==b.id&&['pending','borrowed'].includes(l.status)).length} จาก ${b.qty}`).join('\n')+'\nกดขอยืมได้ที่หน้ายืม-คืนครับ':'ไม่พบรายการที่ตรงกัน ลองใช้คำอื่นสั้น ๆ เช่น ชื่อหมวดหรือชื่อเรื่อง'}],
@@ -40,7 +42,6 @@ return hit.length?'พบรายการ\n'+hit.map(b=>`• ${b.title} เห
 [/โปรไฟล์|แก้ไข(ข้อมูล|ชื่อ)|เปลี่ยน/,async()=>'ไปที่เมนู โปรไฟล์ แก้ข้อมูลแล้วกดบันทึก ถ้าเปลี่ยนวันเกิด รหัสผ่านจะเปลี่ยนตามด้วยครับ'],
 [/เวลา|เปิด|ปิด|ที่ตั้ง|ติดต่อ|เบอร์|ค่าปรับ|กี่วัน|กี่เล่ม|กฎ|ระเบียบ/,async()=>N]];
 async function answer(q){for(const[r,f]of I)if(r.test(q))return f(q);return'ผมยังไม่เข้าใจคำถามนี้ ลองถามเรื่อง ยืมยังไง คืนยังไง ลงทะเบียน ค้นหาหนังสือ หรือสถานะของฉันได้ครับ'}
-window.__answer=answer;
 const p=D.createElement('div');p.className='cp';p.innerHTML='<div class="ch"><span>ผู้ช่วยห้องสมุด</span><button aria-label="ปิด">×</button></div><div class="cm"></div><div class="cq"></div><form class="cf"><input placeholder="พิมพ์คำถาม" aria-label="คำถาม"><button>ส่ง</button></form>';
 const b=D.createElement('button');b.className='cb';b.setAttribute('aria-label','แชทกับผู้ช่วยห้องสมุด');b.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>';D.body.append(p,b);
 const M=p.querySelector('.cm'),inp=p.querySelector('input'),add=(t,c)=>{const e=D.createElement('div');e.className=c;e.textContent=t;M.append(e);M.scrollTop=M.scrollHeight;return e};
@@ -49,7 +50,7 @@ async function send(q){q=q.trim();if(!q)return;add(q,'u');const w=add('...','b')
 p.querySelector('form').onsubmit=e=>{e.preventDefault();send(inp.value);inp.value=''};
 const tog=o=>{p.classList.toggle('o',o);if(o){if(!M.children.length)add('สวัสดีครับ ผมช่วยตอบเรื่องการยืม คืน ลงทะเบียน และค้นหาหนังสือได้ ลองกดหัวข้อด้านล่างหรือพิมพ์ถามได้เลย','b');inp.focus()}};
 b.onclick=()=>tog(!p.classList.contains('o'));p.querySelector('.ch button').onclick=()=>tog(0);addEventListener('keydown',e=>e.key=='Escape'&&tog(0));
-})();
+});
 (()=>{const D=document,R=matchMedia('(prefers-reduced-motion:reduce)').matches;
 D.addEventListener('pointermove',e=>{if(R||e.pointerType=='touch')return;const t=e.target.closest&&e.target.closest('[data-tilt]');if(!t)return;const r=t.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height,s=t.style;
 s.setProperty('--ry',((x-.5)*14).toFixed(1)+'deg');s.setProperty('--rx',((.5-y)*14).toFixed(1)+'deg');s.setProperty('--gx',x*100+'%');s.setProperty('--gy',y*100+'%');s.setProperty('--lz','14px')});
