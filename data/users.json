@@ -31,5 +31,16 @@
   "dob": "12/08/2551",
   "email": "darcybastien232@gmail.com",
   "pw": "dce996ea4dc0738e64da67c7e0200b1f5943227585c09e66e36a759e86711913"
+ },
+ "67219100056": {
+  "first": "ชื่อจริง",
+  "last": "นามสกุล",
+  "level": "ปวช3",
+  "group": "กลุ่มเรียน",
+  "dept": "แผนกวิชา",
+  "major": "สาขาวิชา",
+  "dob": "01/11/2551",
+  "email": "67219100056@ptl.ac.th",
+  "pw": "cfaeea94c58e2c65192eb9566e875bc5dc1db43e5d0b60504ad02dcba80891d6"
  }
 }
