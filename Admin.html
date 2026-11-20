@@ -5,19 +5,39 @@
 #pv{display:flex;gap:10px;align-items:center;margin-top:8px}
 #pv .bi{width:56px;height:76px}
 .rmi{display:flex;gap:6px;align-items:center;font-size:.85rem;margin:0}
+.sm{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.sm span{padding:6px 14px;border-radius:99px;border:1px solid rgba(255,255,255,.18)}
+.sm b{margin-left:8px}.sm .w{border-color:#ff3d58;color:#ff8a9b}
+.fl{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.fl>*{flex:1;min-width:160px}
+.od{background:#b3122d!important;color:#fff!important}
 </style></head><body><main>
-<div class="tabs noprint"><button class="btn" onclick="show('req')">คำขอ</button><button class="btn g" onclick="show('items')">จัดการรายการ</button><button class="btn g" onclick="show('users')">ผู้ใช้</button><button class="btn g" onclick="show('rep')">รายงาน PDF</button></div><div id="v"></div></main>
+<div class="tabs noprint"><button class="btn" data-t="req" onclick="show('req')">คำขอ</button><button class="btn g" data-t="items" onclick="show('items')">จัดการรายการ</button><button class="btn g" data-t="users" onclick="show('users')">ผู้ใช้</button><button class="btn g" data-t="rep" onclick="show('rep')">รายงาน PDF</button></div><div id="v"></div></main>
 <script src="app.js"></script><script>
 guard('admin');nav('Admin.html');let loans=[],books=[],users={};
 const ST={pending:'รออนุมัติ',borrowed:'กำลังยืม',returned:'คืนแล้ว',rejected:'ไม่อนุมัติ'};
 async function ref(){[loans,books,users]=(await Promise.all([load('loans',[]),load('books',[]),load('users',{})])).map(x=>x.d)}
-async function show(t){try{await ref();window[t+'V']()}catch(e){$('#v').textContent=e.message}}
-function reqV(){$('#v').innerHTML=`<div class="wrap"><table><tr><th>เลขที่</th><th>ผู้ยืม</th><th>รายการ</th><th>ยืม</th><th>กำหนดคืน</th><th>สถานะ</th><th></th></tr>${loans.slice().reverse().map(l=>`<tr><td>${l.no}</td><td>${esc(l.name)}<br>${l.level}</td><td>${esc(l.item)}</td><td>${th(l.borrowDate)}</td><td>${th(l.due)}</td><td><span class="tag">${ST[l.status]}</span></td><td>${l.status=='pending'?`<button class="btn" onclick="setL('${l.no}','borrowed')">${ic('check')}อนุมัติ</button> <button class="btn g" onclick="setL('${l.no}','rejected')">ปฏิเสธ</button>`:l.status=='borrowed'?`<button class="btn" onclick="setL('${l.no}','returned')">${ic('check')}รับคืน</button>`:''}</td></tr>`).join('')}</table></div>`}
-async function setL(no,st){let x;try{await upd('loans',[],d=>{x=d.find(y=>y.no==no);x.status=st;if(st=='returned'){x.retDate=today();x.retNo='R'+no.slice(1)}});
+async function show(t){try{await ref();document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('g',b.dataset.t!=t));window[t+'V']()}catch(e){$('#v').textContent=e.message}}
+let rf='pending',rq='',busy=false;
+const isAct=s=>['pending','borrowed'].includes(s);
+const late=l=>l.status=='borrowed'&&l.due&&l.due<today();
+const lateDays=l=>Math.max(1,Math.round((new Date(today())-new Date(l.due))/864e5));
+const actN=id=>loans.filter(l=>l.itemId==id&&isAct(l.status)).length;
+function reqV(){const c=s=>loans.filter(l=>l.status==s).length,od=loans.filter(late).length;
+$('#v').innerHTML=`<div class="sm noprint"><span class="${c('pending')?'w':''}">รออนุมัติ<b>${c('pending')}</b></span><span>กำลังยืม<b>${c('borrowed')}</b></span><span class="${od?'w':''}">เกินกำหนด<b>${od}</b></span></div><div class="fl noprint"><select id="rf"><option value="all">ทุกสถานะ</option><option value="pending">รออนุมัติ</option><option value="borrowed">กำลังยืม</option><option value="late">เกินกำหนดคืน</option><option value="returned">คืนแล้ว</option><option value="rejected">ไม่อนุมัติ</option></select><input id="rs" type="search" placeholder="ค้นหาชื่อผู้ยืม / รายการ / เลขที่"></div><div class="wrap" id="rt"></div>`;
+$('#rf').value=rf;$('#rs').value=rq;
+$('#rf').onchange=e=>{rf=e.target.value;reqT()};$('#rs').oninput=e=>{rq=e.target.value.trim().toLowerCase();reqT()};reqT()}
+function reqT(){const L=loans.slice().reverse().filter(l=>(rf=='all'||(rf=='late'?late(l):l.status==rf))&&(!rq||[l.name,l.item,l.no,l.group].join(' ').toLowerCase().includes(rq)));
+$('#rt').innerHTML=`<table><tr><th>เลขที่</th><th>ผู้ยืม</th><th>รายการ</th><th>ยืม</th><th>กำหนดคืน</th><th>สถานะ</th><th></th></tr>${L.map(l=>`<tr><td>${l.no}</td><td>${esc(l.name)}<br>${esc(l.level)}</td><td>${esc(l.item)}</td><td>${th(l.borrowDate)}</td><td${late(l)?' style="color:#ff8a9b"':''}>${th(l.due)}</td><td>${late(l)?`<span class="tag od">เกินกำหนด ${lateDays(l)} วัน</span>`:`<span class="tag">${ST[l.status]}</span>`}</td><td>${l.status=='pending'?`<button class="btn" onclick="setL('${l.no}','borrowed')">${ic('check')}อนุมัติ</button> <button class="btn g" onclick="setL('${l.no}','rejected')">ปฏิเสธ</button>`:l.status=='borrowed'?`<button class="btn" onclick="setL('${l.no}','returned')">${ic('check')}รับคืน</button>`:''}</td></tr>`).join('')||'<tr><td colspan=7>ไม่มีรายการ</td></tr>'}</table>`}
+async function setL(no,st){if(busy)return;busy=true;let x;
+try{const bk=st=='borrowed'?(await load('books',[])).d:[];
+await upd('loans',[],d=>{x=d.find(y=>y.no==no);if(!x)throw Error('ไม่พบรายการยืมนี้');
+if(st=='borrowed'){const bo=bk.find(z=>z.id==x.itemId);if(!bo)throw Error('ไม่พบหนังสือเล่มนี้ในระบบแล้ว (อาจถูกลบ) กรุณาปฏิเสธคำขอ');
+if(d.filter(y=>y.itemId==x.itemId&&y.status=='borrowed'&&y.no!=no).length>=bo.qty)throw Error('ไม่มีเล่มว่างพอ อนุมัติไม่ได้ (ยืมครบจำนวนแล้ว)')}
+x.status=st;if(st=='returned'){x.retDate=today();x.retNo='R'+no.slice(1)}});
 const e=(users[x.uid]||{}).email,b={'เลขที่การยืม':x.no,'ชื่อผู้ยืม':x.name,'ระดับชั้น':x.level,'กลุ่มเรียน':x.group,'แผนกวิชา':x.dept,'สาขาวิชา':x.major};
 if(st=='borrowed')mail(e,'อนุมัติการยืม',{...b,'รายละเอียดที่ยืม':x.item,'วันที่ยืม':th(x.borrowDate),'วันที่คืน':th(x.due)});
 if(st=='returned')mail(e,'การคืนสำเร็จ',{'เรื่อง':'การคืน','เลขที่การคืน':x.retNo,'เลขอ้างอิงการยืม':x.no,...b,'วันที่ยืม':th(x.borrowDate),'วันที่ต้องคืน':th(x.due),'วันที่คืนสำเร็จ':th(x.retDate)});
-show('req')}catch(e){alert(e.message)}}
+busy=false;await show('req')}catch(e){alert(e.message)}finally{busy=false}}
 let editId=null,newImg=null,delImg=false;
 const okImg=v=>typeof v=='string'&&v.startsWith('data:image/');
 const yearMax=()=>new Date().getFullYear()+544;
@@ -30,7 +50,7 @@ function pv(){const b=editId&&books.find(x=>x.id==editId),old=b&&okImg(b.img)?b.
 $('#pv').innerHTML=(cur?`<img class="bi" src="${cur}" alt="">`:'')+(old&&!newImg?`<label class="rmi"><input type="checkbox" id="rmi" ${delImg?'checked':''}> ลบรูปเดิม</label>`:'');
 const c=$('#rmi');if(c)c.onchange=()=>{delImg=c.checked;pv()}}
 function itemsV(){editId=null;newImg=null;delImg=false;
-$('#v').innerHTML=`<form class="card af" id="af"><div><label>ชื่อ</label><input id="n" required></div><div><label>ประเภท</label><input id="ty"></div><div><label>สำนักพิมพ์</label><input id="pub"></div><div><label>ปีที่พิมพ์ (พ.ศ.)</label><input id="yr" type="number" min="2400" max="${yearMax()}" placeholder="เช่น 2566"></div><div><label>จำนวน</label><input id="q" type="number" min="1" value="1"></div><div><label>รูปปก</label><input id="img" type="file" accept="image/*"><div id="pv"></div></div><div class="afb"><button class="btn" id="sb">${ic('plus')}เพิ่ม</button><button type="button" class="btn g" id="cb" style="display:none">ยกเลิก</button></div></form><br><div class="wrap"><table><tr><th>รูป</th><th>ชื่อ</th><th>ประเภท</th><th>สำนักพิมพ์</th><th>ปีที่พิมพ์</th><th>จำนวน</th><th></th></tr>${books.map(b=>`<tr><td>${okImg(b.img)?`<img class="bi" src="${b.img}" alt="">`:'<div class="bi"></div>'}</td><td>${esc(b.title)}</td><td>${esc(b.type)}</td><td>${esc(b.pub)}</td><td>${esc(b.year)}</td><td>${b.qty}</td><td><button class="btn g" onclick="edB('${b.id}')">${ic('edit')}แก้ไข</button> <button class="btn g" onclick="rmB('${b.id}')">${ic('trash')}ลบ</button></td></tr>`).join('')||'<tr><td colspan=7>ยังไม่มีรายการ</td></tr>'}</table></div>`;
+$('#v').innerHTML=`<form class="card af" id="af"><div><label>ชื่อ</label><input id="n" required></div><div><label>ประเภท</label><input id="ty"></div><div><label>สำนักพิมพ์</label><input id="pub"></div><div><label>ปีที่พิมพ์ (พ.ศ.)</label><input id="yr" type="number" min="2400" max="${yearMax()}" placeholder="เช่น 2566"></div><div><label>จำนวน</label><input id="q" type="number" min="1" value="1"></div><div><label>รูปปก</label><input id="img" type="file" accept="image/*"><div id="pv"></div></div><div class="afb"><button class="btn" id="sb">${ic('plus')}เพิ่ม</button><button type="button" class="btn g" id="cb" style="display:none">ยกเลิก</button></div></form><br><div class="wrap"><table><tr><th>รูป</th><th>ชื่อ</th><th>ประเภท</th><th>สำนักพิมพ์</th><th>ปีที่พิมพ์</th><th>จำนวน</th><th></th></tr>${books.map(b=>`<tr><td>${okImg(b.img)?`<img class="bi" src="${b.img}" alt="">`:'<div class="bi"></div>'}</td><td>${esc(b.title)}</td><td>${esc(b.type)}</td><td>${esc(b.pub)}</td><td>${esc(b.year)}</td><td>${b.qty} <small>(ยืม/จองอยู่ ${actN(b.id)})</small></td><td><button class="btn g" onclick="edB('${b.id}')">${ic('edit')}แก้ไข</button> <button class="btn g" onclick="rmB('${b.id}')">${ic('trash')}ลบ</button></td></tr>`).join('')||'<tr><td colspan=7>ยังไม่มีรายการ</td></tr>'}</table></div>`;
 $('#img').onchange=async e=>{newImg=null;const f=e.target.files[0];
 if(f){try{if(!f.type.startsWith('image/'))throw Error('กรุณาเลือกไฟล์รูปภาพ');if(f.size>10e6)throw Error('ไฟล์ใหญ่เกิน 10 MB');newImg=await toImg(f);delImg=false}catch(er){alert(er.message);e.target.value=''}}
 pv()};
@@ -39,14 +59,18 @@ $('#af').onsubmit=async e=>{e.preventDefault();const y=$('#yr').value.trim();
 if(!yearOk(y)){alert('ปีที่พิมพ์ต้องเป็น พ.ศ. 4 หลัก เช่น 2566');return}
 const sb=$('#sb');sb.disabled=true;
 try{const f={title:$('#n').value.trim(),type:$('#ty').value.trim(),pub:$('#pub').value.trim(),year:y,qty:Math.max(1,+$('#q').value||1)};
+if(editId){const n=(await load('loans',[])).d.filter(l=>l.itemId==editId&&isAct(l.status)).length;if(f.qty<n)throw Error('จำนวนต้องไม่น้อยกว่าจำนวนที่ถูกยืม/จองอยู่ ('+n+' เล่ม)')}
 await upd('books',[],d=>{if(editId){const x=d.find(z=>z.id==editId);if(!x)throw Error('ไม่พบรายการนี้แล้ว');Object.assign(x,f);if(newImg)x.img=newImg;else if(delImg)delete x.img}else d.push({id:'B'+Date.now(),...f,...(newImg?{img:newImg}:{})})});
 show('items')}catch(er){alert(er.message);sb.disabled=false}}}
 function edB(id){const b=books.find(x=>x.id==id);if(!b)return;editId=id;newImg=null;delImg=false;
 $('#n').value=b.title||'';$('#ty').value=b.type||'';$('#pub').value=b.pub||'';$('#yr').value=b.year||'';$('#q').value=b.qty;$('#img').value='';
 $('#sb').innerHTML=ic('check')+'บันทึก';$('#cb').style.display='';pv();scrollTo({top:0,behavior:'smooth'});$('#n').focus()}
-async function rmB(id){if(confirm('ลบรายการนี้?')){await upd('books',[],d=>d.filter(y=>y.id!=id));show('items')}}
+async function rmB(id){try{const n=(await load('loans',[])).d.filter(l=>l.itemId==id&&isAct(l.status)).length;
+if(n){alert('ลบไม่ได้ ยังมี '+n+' รายการที่รออนุมัติหรือกำลังยืมอยู่ ต้องรับคืนหรือปฏิเสธก่อน');return}
+if(confirm('ลบรายการนี้? ประวัติการยืมเดิมจะยังอยู่')){await upd('books',[],d=>d.filter(y=>y.id!=id));show('items')}}catch(e){alert(e.message)}}
 function usersV(){const U=Object.entries(users);$('#v').innerHTML=`<div class="wrap"><table><tr><th>รหัสนักศึกษา</th><th>ชื่อ</th><th>ระดับ</th><th>แผนก</th><th>อีเมล</th><th></th></tr>${U.map(([k,u])=>`<tr><td>${k}</td><td>${esc(u.first+' '+u.last)}</td><td>${u.level}</td><td>${esc(u.dept)}</td><td>${esc(u.email)}</td><td><button class="btn g" onclick="rmU('${k}')">${ic('trash')}ลบ</button></td></tr>`).join('')||'<tr><td colspan=6>ยังไม่มีผู้ใช้</td></tr>'}</table></div>`}
-async function rmU(k){if(confirm('ลบผู้ใช้นี้? ประวัติการยืมจะยังอยู่')){await upd('users',{},u=>{delete u[k]});show('users')}}
+async function rmU(k){const n=loans.filter(l=>l.uid==k&&isAct(l.status)).length;
+try{if(confirm(n?'ผู้ใช้นี้ยังมี '+n+' รายการที่รออนุมัติหรือกำลังยืมอยู่ ยืนยันลบ?':'ลบผู้ใช้นี้? ประวัติการยืมจะยังอยู่')){await upd('users',{},u=>{delete u[k]});show('users')}}catch(e){alert(e.message)}}
 function repV(){$('#v').innerHTML=`<div class="row noprint card"><div><label>รายงานแบบ</label><select id="m"><option value="10">รายวัน</option><option value="7">รายเดือน</option><option value="4">รายปี</option></select></div><div><label>วันที่อ้างอิง</label><input type="date" id="d" value="${today()}"></div><button class="btn" onclick="rep()">${ic('file')}สร้างรายงาน</button><button class="btn g" onclick="print()">บันทึกเป็น PDF</button></div><div id="r"></div>`;rep()}
 function rep(){const n=+$('#m').value,k=$('#d').value.slice(0,n),B=loans.filter(l=>l.borrowDate.startsWith(k)&&['borrowed','returned'].includes(l.status)),R=loans.filter(l=>(l.retDate||'').startsWith(k));
 const C=['no','name','level','group','dept','major'],h='<th>เลขที่การยืม</th><th>ชื่อผู้ยืม</th><th>ระดับชั้น</th><th>กลุ่มเรียน</th><th>แผนก</th><th>สาขา</th>';
