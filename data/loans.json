@@ -73,6 +73,8 @@
   "itemId": "B1794361107905",
   "borrowDate": "2026-11-20",
   "due": "2026-11-27",
-  "status": "borrowed"
+  "status": "returned",
+  "retDate": "2026-11-20",
+  "retNo": "R0005"
  }
 ]
